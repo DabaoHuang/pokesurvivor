@@ -11,6 +11,7 @@
     if (!miss.length) return false;
     const el = document.getElementById('boot');
     el.innerHTML = 'No se pudo cargar todo el juego (¿se cortó la conexión?).<br><button class="btn gold" style="margin-top:12px" onclick="location.reload()">Recargar</button>';
+    if (window.G && G.I18n) G.I18n.walk(el);
     console.warn('[Arranque] faltan:', miss.join(', '));
     return true;
   }
@@ -24,6 +25,13 @@
     const en = window.G && G.I18n ? G.I18n.lang === 'en' : !/^es/i.test(navigator.language || '');
     const el = document.getElementById('boot');
     el.setAttribute('translate', 'no');
+    if (window.G && G.I18n && G.I18n.lang === 'zh-Hant') {
+      el.innerHTML = '<div class="boot-in"><h1>PokéSurvivor</h1>' +
+        '<p><b>目前維護中。</b></p><p>我們正將遊戲移至新的伺服器，讓所有人都能繼續免費遊玩。' +
+        '你的帳號、存檔與寶可夢都安全無虞，請在幾個小時後再回來！</p>' +
+        '<button class="btn gold" style="margin-top:12px" onclick="location.reload()">重試</button></div>';
+      return true;
+    }
     el.innerHTML = '<div class="boot-in"><h1>PokéSurvivor</h1>' + (en
       ? '<p><b>We are under maintenance.</b></p><p>We are moving the game to new servers so it can stay free for everyone. ' +
         'Your account, your save and your Pokémon are safe. Please come back in a few hours!</p>'
