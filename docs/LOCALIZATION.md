@@ -76,6 +76,20 @@ Official names are used for species, recognized moves and held items. Original
 game mechanics, upgrade labels and custom arenas have descriptive translations;
 their effects remain those of PokéSurvivor, not the main-series Pokémon games.
 
+## Upstream integration (2026-10-14)
+
+Updated against upstream `5374405`. Traditional Chinese includes the Judgment of
+Arceus event, its arena/HUD/achievements, Gmail account recovery, leaderboard
+reports and moderator screens, plus the new release notes. Judgment names and
+moderation labels are project-specific translations; Arceus uses 阿爾宙斯.
+Player names and account identifiers remain unchanged in report confirmations
+and moderator summaries. Keep specific message templates before the final
+`{x}).` fallback in the Chinese dictionary.
+
+The upstream production wrapper and obfuscation remain enabled. Startup guards
+refer to the scoped `G`, not `window.G`. Firebase configuration, anti-cheat rules,
+account recovery actions and gameplay mechanics are inherited from upstream.
+
 ## Validation
 
 Dependency-free translation and contract checks:
@@ -93,8 +107,8 @@ node tests/i18n-browser.cjs dev.html
 ```
 
 Alternatively install Playwright's Chromium and set `PLAYWRIGHT_CHANNEL=chromium`.
-The test starts a loopback-only static server and a fresh browser profile,
-disables Firebase in that profile, blocks external requests and service workers,
+The development test starts a loopback-only static server and a fresh browser
+profile, disables Firebase in that profile, blocks external requests and service workers,
 and writes screenshots/reports to `test-results/i18n` (or `I18N_TEST_OUTPUT`). It
 never uses a personal browser profile or production accounts. Do not commit test
 artifacts. Add `/test-results/` to `.git/info/exclude` for local runs.
@@ -102,9 +116,10 @@ artifacts. Add `/test-results/` to `.git/info/exclude` for local runs.
 The browser checks cover registration and selection, menus, species search,
 profile title values, a local gacha draw, settings, persisted language changes,
 unchanged saved progress across reloads, a run/pause/result, item and bond cards,
-release notes, player-name preservation and an 844×390 viewport. Card progression
-and leaderboard rendering use local fixtures; these are not end-to-end multiplayer
-or production Firebase tests. Short gameplay checks do not establish game balance
+release notes, recovery prompts, moderator panels, player-name preservation and
+an 844×390 viewport. Card progression and leaderboard/moderation rendering use
+local fixtures; the Judgment event uses its upstream development debug entry; these are not end-to-end multiplayer
+or production Firebase tests. No moderation action is sent to a server. Short gameplay checks do not establish game balance
 or long-session reliability.
 
 Build and regenerate the existing entry points according to `CLAUDE.md`:
@@ -116,6 +131,17 @@ python3 tools/make_seo_pages.py
 node tests/i18n-browser.cjs index.html
 node tests/i18n-browser.cjs en/index.html
 ```
+
+Production checks run against the actual protected bundle, without exposing `G`
+or using `--expose`. They interact through the DOM and verify that `window.G`
+stays undefined, all three language choices preserve the local save, recovery
+help/new achievements/release notes render, and a run can start, pause and finish.
+They block external traffic; the attempted Firebase SDK loads are deliberately
+aborted, exercising the game's existing local fallback. Reports distinguish those
+blocked attempts from the development test's zero external attempts. Neither test
+validates real Google sign-in, live cloud synchronization or anti-cheat enforcement.
+The optional `tests/i18n-production.cjs` can also be called directly for either
+production entry point. Keep the default protected build as the submitted artifact.
 
 The SEO generator may normalize CRLF files to LF on macOS. Preserve the existing
 line endings before submitting so unrelated pages are not part of the PR. Keep

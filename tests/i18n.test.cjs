@@ -126,3 +126,26 @@ test('language changes only update the preference and reject unsupported locales
   c.G.I18n.set('en'); assert.equal(c.storage['ps.lang'], 'en');
   assert.equal(c.storage['ps.save.test'], 'unchanged'); assert.equal(c.calls.at(-1)[0], 'reload');
 });
+test('new recovery, moderation and Judgment strings preserve opaque player text', () => {
+  const { G } = context();
+  assert.equal(G.T('¿Reportar la marca de Pikachu como trampa?'), '要檢舉 Pikachu 的紀錄涉嫌作弊嗎？');
+  assert.equal(G.T('¿Banear a Pikachu? No podrán volver a salir en el ranking y se borra su marca.'), '要禁止 Pikachu 上榜嗎？其紀錄將被刪除，之後也無法再登上排行榜。');
+  assert.equal(G.T('SENTENCIA · 00:12 · JEFES 3'), '審判 · 00:12 · 首領 3');
+  assert.equal(G.T('ARCEUS · 25 m'), '阿爾宙斯 · 25 公尺');
+  assert.equal(G.T('No se pudo cargar (permission-denied).'), '無法載入（permission-denied）。');
+  assert.equal(G.I18n.f('{x} monedas · {x} tickets · {x} ×10 · {x} Pokémon', '12,345', 2, 3, 4), '12,345 金幣 · 2 張普通券 · 3 張十連券 · 4 隻寶可夢');
+});
+test('startup error and maintenance translations work with a private G', () => {
+  for (const maintenance of [false, true]) {
+    let translated = false;
+    const el = { innerHTML: '', setAttribute() {} };
+    const ctx = { G: { I18n: { lang: 'zh-Hant', walk() { translated = true; } } }, window: {},
+      document: { readyState: 'complete', getElementById() { return el; } },
+      navigator: { language: 'zh-TW' }, location: { search: '' }, console: { warn() {} } };
+    const script = source('js/main.js').replace('const MAINTENANCE = false;', `const MAINTENANCE = ${maintenance};`);
+    vm.runInNewContext(script, ctx);
+    assert.equal(ctx.window.G, undefined);
+    if (maintenance) assert.match(el.innerHTML, /目前維護中/);
+    else assert.ok(translated);
+  }
+});

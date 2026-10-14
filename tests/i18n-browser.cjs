@@ -10,6 +10,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const ROOT = path.resolve(__dirname, '..');
 const entry = process.argv[2] || 'dev.html';
+if (entry !== 'dev.html') { require('./i18n-production.cjs'); return; }
 const out = process.env.I18N_TEST_OUTPUT || path.join(ROOT, 'test-results', 'i18n');
 fs.mkdirSync(out, { recursive: true });
 const MIME = { '.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css', '.png': 'image/png', '.ttf': 'font/ttf', '.json': 'application/json' };
@@ -61,6 +62,8 @@ const server = http.createServer((req, res) => {
     check('Traditional Chinese selected; database stays local', await page.evaluate(() => G.I18n.lang === 'zh-Hant' && G.DB.mode === 'local'));
     await snap('login', true);
     check('login translated', snapshots.login.includes('註冊帳號') && snapshots.login.includes('訪客'));
+    await page.locator('#f-forgot').click(); await snap('forgot-password', true);
+    check('password recovery help is fully translated', snapshots['forgot-password'].includes('若已連結 Gmail') && !snapshots['forgot-password'].includes('Si no lo'));
     await page.locator('[data-tab="register"]').click();
     await page.locator('#f-user').fill('LocaleTester');
     await page.locator('#f-pass').fill('local-test-only');
@@ -99,20 +102,45 @@ const server = http.createServer((req, res) => {
     // Render multiplayer leaderboard UI with local fixtures, never a backend call.
     await page.evaluate(() => {
       window.__socialOriginal = G.Social; window.__rankingOriginal = G.Ranking; window.__needOnline = G.SocialUI.needOnline;
-      G.Social = { ...G.Social, me: { name: 'Pikachu' }, uid: 'fixture', started: true };
+      G.Social = { ...G.Social, me: { name: 'Pikachu' }, uid: 'viewer', started: true };
       G.SocialUI.needOnline = () => true;
-      G.Ranking = { ...G.Ranking, top: async (mode, period, dex) => {
+      G.Ranking = { ...G.Ranking, isAdmin: () => false, board: () => 's_a', reported: () => new Set(), report: async () => { window.__reported = true; }, top: async (mode, period, dex) => {
         window.__rankingDex = dex;
         return [{ uids: ['fixture'], names: ['Pikachu'], dex: [25], shiny: [false], t: 120, lv: 20, kills: 12345 }];
       }, myRank: async () => ({ pos: 1, t: 120 }) };
       G.RankingUI.open();
     });
-    await page.locator('#rk-poke').fill('皮卡丘'); await page.locator('#rk-poke').dispatchEvent('change');
+    await page.locator('#rk-poke').fill('皮卡丘'); await page.locator('#rk-poke').blur();
+    await page.waitForFunction(() => window.__rankingDex === 25);
+    await page.locator('#rk-list .rk-row').waitFor();
     await snap('ranking', true);
     check('Chinese leaderboard filter resolves the same dex ID', await page.evaluate(() => window.__rankingDex === 25));
     check('leaderboard preserves a nickname that matches a species', await page.locator('#rk-list .who b').textContent() === 'Pikachu');
     check('Chinese numeric formatting is used', snapshots.ranking.includes('12,345'));
+    let reportDialog = '';
+    page.once('dialog', async dialog => { reportDialog = dialog.message(); await dialog.accept(); });
+    await page.locator('#rk-list .rk-rep').first().click();
+    await page.waitForFunction(() => window.__reported === true);
+    check('report confirmation is translated and preserves player nickname', reportDialog === '要檢舉 Pikachu 的紀錄涉嫌作弊嗎？' && await page.evaluate(() => window.__reported));
+    await page.evaluate(() => {
+      G.Ranking.isAdmin = () => true;
+      G.Ranking.reports = async () => [{ board: 's_a', e: 'fixture', n: 2, names: ['Pikachu'], ids: ['local'], t: 2040 }];
+      G.Ranking.entryInfo = async () => ({ t: 2040, dex: [25], shiny: [false], lv: 12, kills: 12345 });
+      G.Ranking.markedAccounts = async () => [{ name: 'Pikachu', uid: 'Pikachu_123', coins: 12345, t1: 2, t10: 3, owned: 4 }];
+      G.ModUI.open();
+    });
+    await page.locator('#mod-list .mod-row').waitFor(); await snap('moderation', true);
+    check('moderation report labels and warning are translated', snapshots.moderation.includes('排行榜管理') && snapshots.moderation.includes('刪除紀錄') && snapshots.moderation.includes('超過 33 分鐘') && snapshots.moderation.includes('12,345'));
+    await page.locator('#mod-tabs [data-tab="sus"]').click();
+    await page.locator('#mod-list .mod-row').waitFor(); await snap('marked-accounts', true);
+    check('marked account details translated while nickname and UID stay intact', snapshots['marked-accounts'].includes('12,345 金幣 · 2 張普通券 · 3 張十連券 · 4 隻寶可夢 · Pikachu_123') && await page.locator('#mod-list b').textContent() === 'Pikachu');
+    await page.locator('#mod-back').click();
+    check('moderation back button closes its screen', !await page.locator('#scr-mod').isVisible());
     await page.evaluate(() => { G.Social = window.__socialOriginal; G.Ranking = window.__rankingOriginal; G.SocialUI.needOnline = window.__needOnline; G.Flow.goMenu(); });
+    await page.evaluate(() => document.getElementById('scr-recover').classList.remove('hidden'));
+    await snap('recovery-prompt', true);
+    check('Gmail recovery prompt translated', snapshots['recovery-prompt'].includes('擔心失去帳號嗎？') && snapshots['recovery-prompt'].includes('所有進度都會保留'));
+    await page.locator('#rec-later').click();
     // Render remaining mission/profile panels and a real local gacha draw.
     await page.locator('[data-go="goals"]').click();
     for (const tab of ['ach', 'profile']) {
@@ -186,6 +214,13 @@ const server = http.createServer((req, res) => {
     await snap('item-choice', true);
     check('held item names use Chinese terminology', snapshots['item-choice'].includes('吃剩的東西') && snapshots['item-choice'].includes('氣勢披帶'));
     await page.locator('#item-cards .card').first().click();
+    // Exercise the upstream debug entry in the dev build only, with no network.
+    await page.evaluate(() => { G.Judgment.debugStart(); G.Judgment.cineTick(3); });
+    await snap('judgment-title', true);
+    check('Judgment event starts and translated title is available', await page.evaluate(() => G.Judgment.cinematic && G.T('LA SENTENCIA') === '神之審判' && G.T('DE ARCEUS') === '阿爾宙斯'));
+    await page.evaluate(() => { G.Judgment.cineTick(8); });
+    await snap('judgment-fight', true);
+    check('Judgment arena and HUD localize', await page.evaluate(() => G.Judgment.active && !G.Judgment.cinematic && G.T('Ruinas del Juicio') === '審判遺跡' && G.T('SENTENCIA · 00:00 · JEFES 0') === '審判 · 00:00 · 首領 0'));
     await page.evaluate(() => G.RunUI.showPause(false));
     await page.locator('#btn-quit').click();
     await snap('result', true);
