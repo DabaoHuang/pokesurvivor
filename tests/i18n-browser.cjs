@@ -133,7 +133,7 @@ const server = http.createServer((req, res) => {
     check('moderation report labels and warning are translated', snapshots.moderation.includes('排行榜管理') && snapshots.moderation.includes('刪除紀錄') && snapshots.moderation.includes('超過 33 分鐘') && snapshots.moderation.includes('12,345'));
     await page.locator('#mod-tabs [data-tab="sus"]').click();
     await page.locator('#mod-list .mod-row').waitFor(); await snap('marked-accounts', true);
-    check('marked account details translated while nickname and UID stay intact', snapshots['marked-accounts'].includes('12,345 金幣 · 2 張普通券 · 3 張十連券 · 4 隻寶可夢 · Pikachu_123') && await page.locator('#mod-list b').textContent() === 'Pikachu');
+    check('banned account labels and details translate while nickname and UID stay intact', snapshots['marked-accounts'].includes('已封禁帳號') && snapshots['marked-accounts'].includes('解除封禁') && snapshots['marked-accounts'].includes('12,345 金幣 · 2 張普通券 · 3 張十連券 · 4 隻寶可夢 · Pikachu_123') && await page.locator('#mod-list b').textContent() === 'Pikachu');
     await page.locator('#mod-back').click();
     check('moderation back button closes its screen', !await page.locator('#scr-mod').isVisible());
     await page.evaluate(() => { G.Social = window.__socialOriginal; G.Ranking = window.__rankingOriginal; G.SocialUI.needOnline = window.__needOnline; G.Flow.goMenu(); });
@@ -230,6 +230,7 @@ const server = http.createServer((req, res) => {
     await page.locator('#btn-settings').click(); await page.locator('#set-tabs [data-t="gfx"]').click();
     await snap('mobile-settings', true);
     check('mobile language control remains reachable', await page.locator('[data-lang="zh-Hant"]').isVisible());
+    await require('./i18n-layout.cjs')(page, check, name => snap(name, true));
     check('no page errors', errors.length === 0);
     check('no external service requests', blocked.length === 0);
     fs.writeFileSync(path.join(out, 'snapshots.json'), JSON.stringify(snapshots, null, 2));

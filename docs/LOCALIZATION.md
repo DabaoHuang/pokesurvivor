@@ -76,12 +76,20 @@ Official names are used for species, recognized moves and held items. Original
 game mechanics, upgrade labels and custom arenas have descriptive translations;
 their effects remain those of PokéSurvivor, not the main-series Pokémon games.
 
-## Upstream integration (2026-10-14)
+## Upstream integration (2026-10-16)
 
-Updated against upstream `5374405`. Traditional Chinese includes the Judgment of
+Updated against upstream `5bbc3b2`. Traditional Chinese includes the Judgment of
 Arceus event, its arena/HUD/achievements, Gmail account recovery, leaderboard
 reports and moderator screens, plus the new release notes. Judgment names and
 moderation labels are project-specific translations; Arceus uses 阿爾宙斯.
+The latest translations also cover the mobile button layout editor, fixed/floating
+joystick choices, official-site and code-license notices, required-update countdowns,
+banned-account controls and the October 14–15 release notes. The upstream
+`G.LayoutUI`, `G.Touch`, `G.DB` and `G.Updater` behavior stays intact, including
+cross-device currency reconciliation, official-host restrictions and required
+updates. The removed sign-up cap, TURN worker and Cloud Functions stay removed;
+upstream's current license files are retained unchanged.
+
 Player names and account identifiers remain unchanged in report confirmations
 and moderator summaries. Keep specific message templates before the final
 `{x}).` fallback in the Chinese dictionary.
@@ -117,7 +125,9 @@ The browser checks cover registration and selection, menus, species search,
 profile title values, a local gacha draw, settings, persisted language changes,
 unchanged saved progress across reloads, a run/pause/result, item and bond cards,
 release notes, recovery prompts, moderator panels, player-name preservation and
-an 844×390 viewport. Card progression and leaderboard/moderation rendering use
+an 844×390 viewport. A shared DOM-only layout test verifies translated labels,
+dragging/saving the pause button, fixed joystick selection, reopening and cancelling
+a reset, in both development and protected production builds. Card progression and leaderboard/moderation rendering use
 local fixtures; the Judgment event uses its upstream development debug entry; these are not end-to-end multiplayer
 or production Firebase tests. No moderation action is sent to a server. Short gameplay checks do not establish game balance
 or long-session reliability.
@@ -147,3 +157,9 @@ The SEO generator may normalize CRLF files to LF on macOS. Preserve the existing
 line endings before submitting so unrelated pages are not part of the PR. Keep
 the regenerated `index.html`, `en/index.html`, `js/app.min.js` and `version.json`
 together. No Firebase, Cloudflare or hosting deployment is required for this change.
+
+Verification on 2026-10-16: 10 unit tests, 34 development-browser checks and 22
+protected-browser checks for each production entry point passed. The normal
+70-script build, data export and SEO generation passed; bundle fingerprint
+`42a3b16e14` matches both entries and `version.json`. These local checks do not
+validate live cross-device cloud synchronization or a deployed forced-update event.

@@ -100,6 +100,7 @@ const server = http.createServer((req, res) => {
     await page.locator('#btn-settings').click(); await page.locator('#set-tabs [data-t="gfx"]').click();
     await snap('mobile-settings');
     check('mobile language switch remains reachable', await page.locator('[data-lang="zh-Hant"]').isVisible());
+    await require('./i18n-layout.cjs')(page, check, name => snap(name, true));
     check('G remains private throughout', await page.evaluate(() => typeof window.G === 'undefined'));
     check('no JavaScript page errors', errors.length === 0);
     check('only expected Firebase SDK loads attempted and blocked', blocked.length > 0 && blocked.every(u => /^https:\/\/www\.gstatic\.com\/firebasejs\/[^/]+\/firebase-app-compat\.js$/.test(u)));
